@@ -2,17 +2,22 @@ package com.example.nio;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class NIOServer2 {
-    private final static int port = 9000;
+    private final static int port = 12345;
+    private static Charset charset = Charset.forName("UTF-8");
+    private static CharsetDecoder charsetDecoder = charset.newDecoder();
 
     public static void main(String[] args) {
         NIOServer2 server2 = new NIOServer2();
@@ -78,7 +83,47 @@ public class NIOServer2 {
 
         @Override
         public void run() {
+            try {
+                System.out.println("channel attach " + selectionKey.attachment() + " channel data " + readChannelData());
+                // 处理完之后关闭，也可往channel中写入数据
+                selectionKey.channel().close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
+        public String readChannelData() throws IOException {
+            SocketChannel sc = (SocketChannel) selectionKey.channel();
+            int byteSize = 1024;
+            // allocateDirect 直接分配内存
+            ByteBuffer buffer = ByteBuffer.allocateDirect(byteSize);
+            // 由于不知道传入的数据有多大，声明一个更大的buffer
+            ByteBuffer bigBuffer = null;
+            // 循环读取byteSize的次数
+            int count = 0;
+            while (sc.read(buffer) != -1) {
+                count++;
+                // 先处理之前的数据
+                ByteBuffer temp = ByteBuffer.allocateDirect((count + 1) * byteSize);
+                if (bigBuffer != null) {
+                    // 把bigBuffer转为读模式
+                    bigBuffer.flip();
+                    temp.put(bigBuffer);
+                }
+                bigBuffer = temp;
+
+                // 将本次读取的数据放入bigBuffer
+                buffer.flip();
+                bigBuffer.put(buffer);
+
+                // 为下一次循环，清空buffer的数据
+                buffer.clear();
+            }
+            if (bigBuffer != null) {
+                bigBuffer.flip();
+                return charsetDecoder.decode(bigBuffer).toString();
+            }
+            return null;
         }
     }
 }
