@@ -85,7 +85,7 @@ public class NIOServer2 {
         public void run() {
             try {
                 System.out.println("channel attach " + selectionKey.attachment() + " channel data " + readChannelData());
-                // 处理完之后关闭，也可往channel中写入数据
+                // 处理完之后关闭，TODO 也可往channel中写入数据
                 selectionKey.channel().close();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -103,13 +103,14 @@ public class NIOServer2 {
             int count = 0;
             while (sc.read(buffer) != -1) {
                 count++;
-                // 先处理之前的数据
+                // 先处理之前的数据，temp每次比之前的大1 byteSize
                 ByteBuffer temp = ByteBuffer.allocateDirect((count + 1) * byteSize);
                 if (bigBuffer != null) {
                     // 把bigBuffer转为读模式
                     bigBuffer.flip();
                     temp.put(bigBuffer);
                 }
+                // 赋值给bigBuffer
                 bigBuffer = temp;
 
                 // 将本次读取的数据放入bigBuffer
